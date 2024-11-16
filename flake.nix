@@ -9,6 +9,9 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
     fourmolu-nix.url = "github:jedimahdi/fourmolu-nix";
+
+    org-mode-hs.url = "github:sophicshift/org-mode-hs";
+    org-mode-hs.flake = false;
   };
 
   outputs = inputs:

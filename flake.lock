@@ -81,6 +81,22 @@
         "type": "github"
       }
     },
+    "org-mode-hs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1703817140,
+        "narHash": "sha256-c4LoHmERuYAF7qPXI1FmJBdWuReMZlClk47AlElynD4=",
+        "owner": "sophicshift",
+        "repo": "org-mode-hs",
+        "rev": "2f7c54e0b0782c8186d132c83b6dcc4815ef02be",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sophicshift",
+        "repo": "org-mode-hs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -88,6 +104,7 @@
         "haskell-flake": "haskell-flake",
         "nixos-unified": "nixos-unified",
         "nixpkgs": "nixpkgs",
+        "org-mode-hs": "org-mode-hs",
         "treefmt-nix": "treefmt-nix"
       }
     },

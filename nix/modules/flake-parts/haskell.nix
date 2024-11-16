@@ -25,24 +25,13 @@
 
       # Packages to add on top of `basePackages`
       packages = {
-        # Add source or Hackage overrides here
-        # (Local packages are added automatically)
-        /*
-        aeson.source = "1.5.0.0" # Hackage version
-        shower.source = inputs.shower; # Flake input
-        */
+        org-parser.source = inputs.org-mode-hs + /org-parser;
+        slugify.source = "0.1.0.2";
       };
 
       # Add your package overrides here
       settings = {
-        /*
-        orgnest = {
-          haddock = false;
-        };
-        aeson = {
-          check = false;
-        };
-        */
+        org-parser.jailbreak = true;
       };
 
       # Development shell configuration
