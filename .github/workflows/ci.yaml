@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
@@ -18,5 +18,3 @@ jobs:
         run: nix --accept-flake-config profile install "github:juspay/omnix"
       - name: Build all flake outputs
         run: om ci
-      - name: What GHC version?
-        run: nix develop -c ghc --version
