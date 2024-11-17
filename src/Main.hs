@@ -4,6 +4,7 @@
 
 module Main where
 
+import Data.Map.Strict qualified as Map
 import Lucid
 import Main.Utf8 qualified as Utf8
 import Org.Parser
@@ -18,7 +19,7 @@ main = do
     print $ renderText $ toHtml doc
     S.scotty 4004 $ do
       S.get "/" $ do
-        S.html $ renderText $ toHtml doc
+        S.html $ renderText $ layout $ toHtml doc
 
 instance ToHtml OrgDocument where
   toHtml doc =
@@ -26,14 +27,17 @@ instance ToHtml OrgDocument where
   toHtmlRaw = undefined
 
 instance ToHtml OrgSection where
-  toHtml (OrgSection {sectionRawTitle, sectionLevel, sectionChildren, sectionSubsections}) =
-    div_ $ do
-      sectionHeading sectionLevel $ toHtml sectionRawTitle
-      div_ [style_ "color: #1a1a1a"] $ do
-        forM_ sectionChildren $ \c ->
-          toHtml c
-      forM_ sectionSubsections $ \s ->
-        div_ [style_ "margin-left: 1em; border-left: 1px solid; padding-left: 0.4em"] $ do
+  toHtml (OrgSection {sectionTitle, sectionLevel, sectionProperties, sectionChildren, sectionSubsections}) = do
+    let attrs = case Map.lookup "id" sectionProperties of
+          Just _id -> [id_ _id]
+          Nothing -> []
+    div_ attrs $ do
+      sectionHeading sectionLevel $ mapM_ toHtml sectionTitle
+      div_ [style_ "margin-left: 0.7em; padding-left: 0.4em"] $ do
+        div_ [style_ ""] $ do
+          forM_ sectionChildren $ \c ->
+            toHtml c
+        forM_ sectionSubsections $ \s ->
           toHtml s
   toHtmlRaw = undefined
 
@@ -45,12 +49,15 @@ instance ToHtml OrgElement where
 instance ToHtml OrgElementData where
   toHtml = \case
     Paragraph p ->
-      p_ $
+      p_ [style_ "margin-top: 1em; margin-bottom: 1em; "] $
         mapM_ toHtml p
     PlainList {listItems} ->
       ol_ $
         mapM_ toHtml listItems
-    x -> code_ $ "Not Implemented for " <> show x
+    GreaterBlock {blkElements} -> do
+      blockquote_ [style_ "border-left: 1px solid; padding-left: 1em; color: darkslategray;"] $ do
+        mapM_ toHtml blkElements
+    x -> todo "OrgElementData" $ show x
   toHtmlRaw = undefined
 
 instance ToHtml OrgObject where
@@ -58,23 +65,59 @@ instance ToHtml OrgObject where
     case obj of
       Plain s -> toHtml s
       Bold s -> strong_ $ mapM_ toHtml s
-      Timestamp ts -> toHtml $ show @Text ts
-      x -> code_ $ "Not Implemented for " <> show x
+      Italic s -> em_ $ mapM_ toHtml s
+      Underline s -> span_ [style_ "text-decoration: underline"] $ mapM_ toHtml s
+      Verbatim s -> code_ [style_ "font-size: 0.7em;"] $ toHtml s
+      Timestamp ts -> todo "Timestamp" $ show @Text ts
+      Link url x -> a_ [href_ $ linkTargetToText url] $ mapM_ toHtml x
+      Quoted q x -> do
+        let qs = case q of
+              SingleQuote -> "'"
+              DoubleQuote -> "\""
+        qs
+        mapM_ toHtml x
+        qs
+      x -> code_ $ "TODO(OrgObject) " <> show x
   toHtmlRaw = undefined
 
+todo :: (Monad m) => Text -> Text -> HtmlT m ()
+todo t s = do
+  span_ [style_ "color: #ff0000"] $ do
+    toHtml $ "TODO(" <> t <> ")"
+  code_ $ toHtml s
+
 instance ToHtml ListItem where
-  toHtml (ListItem _ _ _ _objs elems) =
-    li_ $ mapM_ toHtml elems
+  toHtml (ListItem _ _ _ objs elems) =
+    li_ $ do
+      mapM_ (todo "ListItem:objs[]" . show) objs
+      mapM_ toHtml elems
   toHtmlRaw = undefined
 
 sectionHeading :: (Monad m) => Int -> HtmlT m () -> HtmlT m ()
-sectionHeading n = h [class_ "section-heading"]
+sectionHeading n = h
   where
     h = case n of
-      1 -> h1_
-      2 -> h2_
-      3 -> h3_
-      4 -> h4_
-      5 -> h5_
-      6 -> h6_
-      _ -> h6_
+      1 -> h1_ [style_ $ baseStyle <> "font-size: " <> size 1.5 <> ";"]
+      2 -> h2_ [style_ $ baseStyle <> "font-size: " <> size 1.4 <> "; background-color: #f0fa30; padding: 0.1em 0.3em; border-radius: 0.1em;"]
+      3 -> h3_ [style_ $ baseStyle <> "font-size: " <> size 1.3 <> "; background-color: #a0f5f0; padding: 0.1em 0.3em; border-radius: 0.1em;"]
+      4 -> h4_ [style_ $ baseStyle <> "font-size: " <> size 1.2 <> ";"]
+      5 -> h5_ [style_ $ baseStyle <> "font-size: " <> size 1.15 <> ";"]
+      _ -> h6_ [style_ $ baseStyle <> "font-size: " <> size 1.10 <> ";"]
+    baseStyle = "font-weight: normal; margin: 0.5em 0 0.5em;"
+    size (x :: Double) = show x <> "em"
+
+layout :: Html () -> Html ()
+layout content = do
+  doctype_
+  html_ $ do
+    head_ $ do
+      meta_ [charset_ "utf-8", name_ "viewport", content_ "width=device-width, initial-scale=1"]
+      title_ "Srid's Actualism Practice"
+      -- reset css
+      script_ [src_ "https://unpkg.com/htmx.org@2.0.3", integrity_ "sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq", crossorigin_ "anonymous"] $ fromString @Text ""
+      link_ [rel_ "stylesheet", type_ "text/css", href_ "https://unpkg.com/modern-css-reset/dist/reset.min.css"]
+      style_ "@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');"
+    body_ $ do
+      div_
+        [style_ "font-family: 'EB Garamond', sans-serif; font-size: 20px; margin-left: 1em"]
+        content
