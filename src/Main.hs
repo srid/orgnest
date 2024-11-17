@@ -14,11 +14,14 @@ import Web.Scotty qualified as S
 main :: IO ()
 main = do
   Utf8.withUtf8 $ do
-    s <- decodeUtf8 <$> readFileBS "/home/srid/org/main.org"
-    let doc = parseOrgDoc defaultOrgOptions "main.org" s
-    print $ renderText $ toHtml doc
+    do
+      s <- decodeUtf8 <$> readFileBS "/home/srid/org/main.org"
+      let doc = parseOrgDoc defaultOrgOptions "main.org" s
+      print $ renderText $ toHtml doc
     S.scotty 4004 $ do
       S.get "/" $ do
+        s <- decodeUtf8 <$> readFileBS "/home/srid/org/main.org"
+        let doc = parseOrgDoc defaultOrgOptions "main.org" s
         S.html $ renderText $ layout $ toHtml doc
 
 instance ToHtml OrgDocument where
@@ -51,9 +54,19 @@ instance ToHtml OrgElementData where
     Paragraph p ->
       p_ [style_ "margin-top: 1em; margin-bottom: 1em; "] $
         mapM_ toHtml p
-    PlainList {listItems} ->
-      ol_ $
-        mapM_ toHtml listItems
+    PlainList {listType, listItems} -> do
+      let genList = case listType of
+            Ordered _ -> ol_
+            _ -> ul_
+      genList $
+        forM_ listItems $ \(ListItem _ _ _ _ items) ->
+          li_ $ case elementData <$> items of
+            -- Strip paragraphs in list outlines
+            [Paragraph p] -> mapM_ toHtml p
+            [Paragraph p, x@(PlainList _ _)] -> do
+              mapM_ toHtml p
+              toHtml x
+            x -> todo "LIST" $ show x -- need to handle other cases
     GreaterBlock {blkElements} -> do
       blockquote_ [style_ "border-left: 1px solid; padding-left: 1em; color: darkslategray;"] $ do
         mapM_ toHtml blkElements
@@ -98,12 +111,12 @@ sectionHeading n = h
   where
     h = case n of
       1 -> h1_ [style_ $ baseStyle <> "font-size: " <> size 1.5 <> ";"]
-      2 -> h2_ [style_ $ baseStyle <> "font-size: " <> size 1.4 <> "; background-color: #f0fa30; padding: 0.1em 0.3em; border-radius: 0.1em;"]
-      3 -> h3_ [style_ $ baseStyle <> "font-size: " <> size 1.3 <> "; background-color: #a0f5f0; padding: 0.1em 0.3em; border-radius: 0.1em;"]
+      2 -> h2_ [style_ $ baseStyle <> "font-size: " <> size 1.4 <> "; background-color: bisque; font-weight: bold; padding: 0.1em 0.3em; border-radius: 0.1em;"]
+      3 -> h3_ [style_ $ baseStyle <> "font-size: " <> size 1.3 <> "; background-color: lightyellow; font-weight: bold; padding: 0.1em 0.3em; border-radius: 0.1em;"]
       4 -> h4_ [style_ $ baseStyle <> "font-size: " <> size 1.2 <> ";"]
       5 -> h5_ [style_ $ baseStyle <> "font-size: " <> size 1.15 <> ";"]
       _ -> h6_ [style_ $ baseStyle <> "font-size: " <> size 1.10 <> ";"]
-    baseStyle = "font-weight: normal; margin: 0.5em 0 0.5em;"
+    baseStyle = "font-weight: normal; margin: 0.5em 0 0.5em; color: blueviolet;"
     size (x :: Double) = show x <> "em"
 
 layout :: Html () -> Html ()
@@ -112,12 +125,12 @@ layout content = do
   html_ $ do
     head_ $ do
       meta_ [charset_ "utf-8", name_ "viewport", content_ "width=device-width, initial-scale=1"]
-      title_ "Srid's Actualism Practice"
+      title_ "Orgnest"
       -- reset css
       script_ [src_ "https://unpkg.com/htmx.org@2.0.3", integrity_ "sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq", crossorigin_ "anonymous"] $ fromString @Text ""
       link_ [rel_ "stylesheet", type_ "text/css", href_ "https://unpkg.com/modern-css-reset/dist/reset.min.css"]
       style_ "@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');"
     body_ $ do
       div_
-        [style_ "font-family: 'EB Garamond', sans-serif; font-size: 20px; margin-left: 1em"]
+        [style_ "font-size: 18px; margin-left: 1em"]
         content
