@@ -81,11 +81,13 @@ common shared
     , data-default
     , directory
     , filepath
+    , lucid2
     , mtl
     , optics-core
     , org-parser
     , profunctors
     , relude        >=1.0
+    , scotty
     , shower
     , time
     , with-utf8
